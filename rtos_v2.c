@@ -32,6 +32,8 @@ uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
 // variables for controller
+uint8_t lock = 0
+
 uint8_t Ts; // Desired Speed in 3.9 rpm units
 uint8_t T; // Current Speed in 3.9 rpm units
 uint8_t Told; // Previous Speed in 3.9 rpm units
@@ -75,18 +77,26 @@ void Init_LCD_Ports(void);
 void Init_LCD(void);
 void Init_Clock(void);
 
+// helper function for voltage to speed
+int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
+                                           // DC motor RPM given the voltage in mV
+  if (Avg_volt<= 1200) {return 0;}
+  else {return ((21408*Avg_volt)>>16)-225;}
+}
+
 void DCMotor(void) {
 
 }
 
+// get this working first
 void ADC(void) {
 
 }
 
 // Fuzzy Logic
 void CrispInput(void){
-	E = Subtract(Ts,T);
-	D = Subtract(T,Told);
+	E = Ts - T; // from subtract function in pseudocode
+	D = T - Told;
 	Told = T; // Set up Told for next time
 }
 
@@ -132,7 +142,7 @@ uint8_t static max(uint8_t u1,uint8_t u2){
 	if(u1<u2) return(u2);
 	else return(u1);}
 
-void OutputMembership(void){
+void OutputMembership(void){ // relationship between the input fuzzy membership sets and fuzzy output membership values
 	Same = min(OK,Constant);
 	Decrease = min(OK,Up)
 	Decrease = max(Decrease,min(Fast,Constant));
@@ -142,12 +152,20 @@ void OutputMembership(void){
 	Increase = max(Increase,min(Slow,Down));
 }
 
-void CrispOutput(void){
+void CrispOutput(void){ // Defuzzification
 	dN=(TN*(Increase-Decrease))/(Decrease+Same+Increase);
 }
 
 void Timer0A_Handler(void){
-	T = SE(); // estimate speed, set T, 0 to 255
+	T = Current_speed(voltage); // TODO- edit
+		// estimate speed, set T, 0 to 255
+	Ts = desired_speed // TODO- edit
+	if(lock == 0)
+	{
+		Told = 0;
+		lock = 1; // just set this once first and never set Told to 0 again
+	}
+
 	CrispInput(); // Calculate E,D and new Told
 	InputMembership(); // Sets Fast, OK, Slow, Down,
 	//Constant, Up
@@ -159,6 +177,7 @@ void Timer0A_Handler(void){
 	// timer
 }
 
+// TODO- set up PWM
 void PWM1C_Duty(uint16_t duty){
 	PWM1_3_CMPA_R = duty - 1;
 	// count value when output rises
