@@ -32,11 +32,9 @@ uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
 // variables for controller
-uint8_t lock = 0
-
 uint8_t Ts; // Desired Speed in 3.9 rpm units
 uint8_t T; // Current Speed in 3.9 rpm units
-uint8_t Told; // Previous Speed in 3.9 rpm units
+uint8_t Told = 0; // initial val 0 // Previous Speed in 3.9 rpm units
 int8_t D; // Change in Speed in 3.9 rpm/time units
 int8_t E; // Error in Speed in 3.9 rpm units
 
@@ -160,11 +158,6 @@ void Timer0A_Handler(void){
 	T = Current_speed(voltage); // TODO- edit
 		// estimate speed, set T, 0 to 255
 	Ts = desired_speed // TODO- edit
-	if(lock == 0)
-	{
-		Told = 0;
-		lock = 1; // just set this once first and never set Told to 0 again
-	}
 
 	CrispInput(); // Calculate E,D and new Told
 	InputMembership(); // Sets Fast, OK, Slow, Down,
