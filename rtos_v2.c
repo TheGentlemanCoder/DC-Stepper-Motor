@@ -31,10 +31,22 @@
 uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
-uint32_t cur_Color = 8;
-uint32_t next_Color = 8;
-uint32_t counter = 15; 
-int32_t sLCD = 1; // LCD Semaphore
+// variables for controller
+uint8_t Ts; // Desired Speed in 3.9 rpm units
+uint8_t T; // Current Speed in 3.9 rpm units
+uint8_t Told; // Previous Speed in 3.9 rpm units
+int8_t D; // Change in Speed in 3.9 rpm/time units
+int8_t E; // Error in Speed in 3.9 rpm units
+
+# define TE 20
+uint8_t Fast, OK, Slow;
+uint8_t Down, Constant, Up;
+#define TD 20
+uint8_t Increase, Same;
+uint8_t Decrease;
+#define TN 20
+int32_t dN; 
+// end of controller variables
 
 uint32_t button_pressed = 0x00;
 uint32_t clear_top = 0x00;
@@ -63,23 +75,101 @@ void Init_LCD_Ports(void);
 void Init_LCD(void);
 void Init_Clock(void);
 
-void DCMotor() {
+void DCMotor(void) {
 
 }
 
-void ADC() {
+void ADC(void) {
 
 }
 
-void Controller() {
+// Fuzzy Logic
+void CrispInput(void){
+	E = Subtract(Ts,T);
+	D = Subtract(T,Told);
+	Told = T; // Set up Told for next time
+}
+
+void InputMembership(void){ // like the graphs for the membership
+	if(E <= -TE) { // E≤-TE
+		Fast = 255;
+		OK = 0;
+		Slow = 0;}
+	else if(E < 0){ // -TE<E<0
+		Fast = (255*(-E))/TE;
+		OK = 255-Fast;
+		Slow = 0;}
+	else if(E < TE){ // 0<E<TE
+		Fast = 0;
+		Slow = (255*E)/TE;
+		OK = 255-Slow;}
+	else { // +TE≤E
+		Fast = 0;
+		OK = 0;
+		Slow = 255;}
+	if(D <= -TD) {// D≤-TD
+		Down = 255;
+		Constant = 0;
+		Up = 0;}
+	else if(D < 0){// -TD<D<0
+		Down = (255*(-D))/TD;
+		Constant = 255-Down;
+		Up = 0;}
+	else if(D < TD){// 0<D<TD
+		Down = 0;
+		Up = (255*D)/TD;
+		Constant = 255-Up;}
+	else{ // +TD≤D
+		Down = 0;
+		Constant = 0;
+		Up = 255;} }
+
+uint8_t static min(uint8_t u1,uint8_t u2){
+	if(u1>u2) return(u2);
+	else return(u1);}
+
+uint8_t static max(uint8_t u1,uint8_t u2){
+	if(u1<u2) return(u2);
+	else return(u1);}
+
+void OutputMembership(void){
+	Same = min(OK,Constant);
+	Decrease = min(OK,Up)
+	Decrease = max(Decrease,min(Fast,Constant));
+	Decrease = max(Decrease,min(Fast,Up));
+	Increase = min(OK,Down);
+	Increase = max(Increase,min(Slow,Constant));
+	Increase = max(Increase,min(Slow,Down));
+}
+
+void CrispOutput(void){
+	dN=(TN*(Increase-Decrease))/(Decrease+Same+Increase);
+}
+
+void Timer0A_Handler(void){
+	T = SE(); // estimate speed, set T, 0 to 255
+	CrispInput(); // Calculate E,D and new Told
+	InputMembership(); // Sets Fast, OK, Slow, Down,
+	//Constant, Up
+	OutputMembership(); // Sets Increase, Same, Decrease
+	CrispOutput(); // Sets dN
+	N = max(0,min(N+dN,255));
+	PWM0A_Duty(N); // output to actuator
+	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
+	// timer
+}
+
+void PWM1C_Duty(uint16_t duty){
+	PWM1_3_CMPA_R = duty - 1;
+	// count value when output rises
+}
+// End of fuzzy logic
+
+void Keypad(void) {
 
 }
 
-void Keypad() {
-
-}
-
-void LCD() {
+void LCD(void) {
 
 }
 
@@ -97,7 +187,7 @@ int main(void){
 	GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
 	GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
 		
-  OS_AddThreads(&DCMotor, &ADC, &Controller, &Keypad, &LCD);
+  OS_AddThreads(&DCMotor, &ADC, &Timer0A_Handler, &Keypad, &LCD);
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
