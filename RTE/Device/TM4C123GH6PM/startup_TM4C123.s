@@ -399,11 +399,12 @@ WDT0_Handler\
                 B       .
                 ENDP
 
-TIMER0A_Handler\
+    IMPORT      TIMER0A_Handler
+;TIMER0A_Handler\
                 PROC
-                EXPORT  TIMER0A_Handler [WEAK]
-                B       .
-                ENDP
+;                EXPORT  TIMER0A_Handler [WEAK]
+;                B       .
+;                ENDP
 
 TIMER0B_Handler\
                 PROC
@@ -934,6 +935,76 @@ PWM1_FAULT_Handler\
                 ENDP
 
                 ALIGN
+
+;******************************************************************************
+;
+; Make sure the end of this section is aligned.
+;
+;******************************************************************************
+        ALIGN
+
+;******************************************************************************
+;
+; Some code in the normal code section for initializing the heap and stack.
+;
+;******************************************************************************
+        AREA    |.text|, CODE, READONLY
+
+;******************************************************************************
+;
+; Useful functions.
+;
+;******************************************************************************
+        EXPORT  DisableInterrupts
+        EXPORT  EnableInterrupts
+        EXPORT  StartCritical
+        EXPORT  EndCritical
+        EXPORT  WaitForInterrupt
+
+;*********** DisableInterrupts ***************
+; disable interrupts
+; inputs:  none
+; outputs: none
+DisableInterrupts
+        CPSID  I
+        BX     LR
+
+;*********** EnableInterrupts ***************
+; disable interrupts
+; inputs:  none
+; outputs: none
+EnableInterrupts
+        CPSIE  I
+        BX     LR
+
+;*********** StartCritical ************************
+; make a copy of previous I bit, disable interrupts
+; inputs:  none
+; outputs: previous I bit
+StartCritical
+        MRS    R0, PRIMASK  ; save old status
+        CPSID  I            ; mask all (except faults)
+        BX     LR
+
+;*********** EndCritical ************************
+; using the copy of previous I bit, restore I bit to previous value
+; inputs:  previous I bit
+; outputs: none
+EndCritical
+        MSR    PRIMASK, R0
+        BX     LR
+
+;*********** WaitForInterrupt ************************
+; go to low power mode while waiting for the next interrupt
+; inputs:  none
+; outputs: none
+WaitForInterrupt
+        WFI
+        BX     LR
+
+;******************************************************************************
+;
+
 
 
 ; User Initial Stack & Heap
