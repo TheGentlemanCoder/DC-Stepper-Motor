@@ -182,7 +182,17 @@ void Keypad(void) {
 }
 
 void LCD(void) {
-
+	// display input rpm
+	// next line display target and current rpm
+	SetPosition(0x00);
+	Display_Msg("Input RPM:");
+	// display keypad number
+	Display_Char((char) key_rpm); //TODO- put actual variable from keypad
+	SetPosition(0x40); // next line
+	Display_Msg("T:");
+	Display_Char((char) key_rpm);
+	Display_Msg(" C:");
+	Display_Char((char) cur_rpm); //TODO- put actuall current rpm
 }
 
 int main(void){
