@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <ADC.h>
+#include "ADC.h"
 
 void Init_ADC() {
 	// Initialize data pins PB5 - PB2
@@ -45,6 +45,8 @@ void Toggle_ADC_RC() {
 	GPIO_PORTF_DATA_R ^= 0x04;
 }
 
+// Active low signal, returns 0 if busy,
+// not zero if not busy
 uint8_t Read_ADC_BUSY() {
 	return GPIO_PORTF_DATA_R & 0x08;
 }
@@ -58,10 +60,12 @@ uint8_t Read_Data_Bits() {
 	return retVal;
 }
 
-uint32_t Sample_ADC() {
-	uint32_t retVal;
+// Returns a sample in the 12 LSBs of the return value
+int32_t Sample_ADC() {
+	int32_t retVal;
 	
 	// start conversion
+	Toggle_ADC_RC();
 	Toggle_ADC_RC();
 	
 	// wait until conversion finishes
@@ -76,6 +80,32 @@ uint32_t Sample_ADC() {
 	for(int i = 0; i < 100; ++i) {}; // waste time while output changes
 	
 	retVal |= (Read_Data_Bits() & 0xF0) >> 4;
+	
+	// return ADC to its original state
+	Toggle_ADC_BYTE();
 		
+	return retVal;
+}
+
+// Assumes that the input signal to the ADC is between +10V and -10V,
+// returns the voltage of the sample in millivolts
+int32_t Sample_to_Millivolts(int32_t sample) {
+	int32_t retVal;
+	int32_t temp;
+	uint32_t scale_constant = 205; // 205 sample ticks = 1 V
+	
+	if (sample & 0x00000000) {
+		// sample is negative in two's complement, copy sign bit over
+		temp =   (0x00000FFF & sample);
+		temp |=  (0xFFFFF000);
+	} else {
+		// sample is positive in two's complement, copy sign bit over
+		temp =   (0x00000FFF & sample);
+		temp &= ~(0xFFFFF000);
+	}
+	
+	// project sample range onto signal's voltage range
+	retVal = (1000 * temp) / scale_constant; // millivolts
+	
 	return retVal;
 }
