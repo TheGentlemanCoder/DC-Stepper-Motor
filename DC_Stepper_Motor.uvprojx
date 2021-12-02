@@ -377,6 +377,58 @@
       <Groups>
         <Group>
           <GroupName>Source Group 1</GroupName>
+          <Files>
+            <File>
+              <FileName>LCD_Logic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\LCD_Logic.c</FilePath>
+            </File>
+            <File>
+              <FileName>os_v2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\os_v2.c</FilePath>
+            </File>
+            <File>
+              <FileName>Target_Speed_FIFO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Target_Speed_FIFO.c</FilePath>
+            </File>
+            <File>
+              <FileName>Voltage2RPM.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Voltage2RPM.c</FilePath>
+            </File>
+            <File>
+              <FileName>LCD_Logic.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\LCD_Logic.h</FilePath>
+            </File>
+            <File>
+              <FileName>os.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\os.h</FilePath>
+            </File>
+            <File>
+              <FileName>ASCII_Conversions.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\ASCII_Conversions.s</FilePath>
+            </File>
+            <File>
+              <FileName>Keypad.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\Keypad.s</FilePath>
+            </File>
+            <File>
+              <FileName>LCD.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\LCD.s</FilePath>
+            </File>
+            <File>
+              <FileName>osasm_V2.s</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\osasm_V2.s</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>::CMSIS</GroupName>
