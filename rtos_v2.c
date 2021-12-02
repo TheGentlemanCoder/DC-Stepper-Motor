@@ -32,8 +32,8 @@ uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
 // variables for controller
-uint8_t Ts; // Desired Speed in 3.9 rpm units
-uint8_t T; // Current Speed in 3.9 rpm units
+uint8_t Ts = 0; // Desired Speed in 3.9 rpm units
+uint8_t T = 0; // Current Speed in 3.9 rpm units
 uint8_t Told = 0; // initial val 0 // Previous Speed in 3.9 rpm units
 int8_t D; // Change in Speed in 3.9 rpm/time units
 int8_t E; // Error in Speed in 3.9 rpm units
@@ -45,14 +45,19 @@ uint8_t Down, Constant, Up;
 uint8_t Increase, Same;
 uint8_t Decrease;
 #define TN 20
-int32_t dN; 
+int32_t dN;
+int32_t N = 0; //TODO- set this variable correctly
+int32_t voltage = 0; // TODO- might be different variable for the current voltage
 // end of controller variables
 
+uint8_t Key_ASCII; // contain value returned by Scan_Keypad
 uint32_t button_pressed = 0x00;
 uint32_t clear_top = 0x00;
+int32_t sLCD = 1; // LCD Semaphore
+int32_t key_rpm_pos = 0x0B;
 
 void OS_Init(void);
-void OS_AddThreads(void f1(void), void f2(void), void f3(void), void f4(void), void f5(void));
+void OS_AddThreads(void f1(void), void f2(void), void f3(void), void f4(void));
 void OS_Launch(uint32_t);
 void OS_Sleep(uint32_t SleepCtr);
 void OS_Fifo_Put(uint32_t data);
@@ -70,10 +75,12 @@ void OS_EnableInterrupts(void);  // Enable interrupts
 // function definitions in LCD.s
 void Display_Msg(char* msg); // Disable interrupts
 void Display_Char(char msg);
-void Set_Position(int pos);
+void Set_Position(int32_t pos);
 void Init_LCD_Ports(void);
 void Init_LCD(void);
-void Init_Clock(void);
+void Clock_Init(void);
+
+void TIMER0A_Handler(void); // thread function header
 
 // helper function for voltage to speed
 int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
@@ -83,12 +90,12 @@ int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
 }
 
 void DCMotor(void) {
-
+	for(;;){} 
 }
 
 // get this working first
 void ADC(void) {
-
+	for(;;){} 
 }
 
 // Fuzzy Logic
@@ -142,7 +149,7 @@ uint8_t static max(uint8_t u1,uint8_t u2){
 
 void OutputMembership(void){ // relationship between the input fuzzy membership sets and fuzzy output membership values
 	Same = min(OK,Constant);
-	Decrease = min(OK,Up)
+	Decrease = min(OK,Up);
 	Decrease = max(Decrease,min(Fast,Constant));
 	Decrease = max(Decrease,min(Fast,Up));
 	Increase = min(OK,Down);
@@ -154,10 +161,19 @@ void CrispOutput(void){ // Defuzzification
 	dN=(TN*(Increase-Decrease))/(Decrease+Same+Increase);
 }
 
-void Timer0A_Handler(void){
+// TODO- set up PWM
+void PWM1C_Duty(uint16_t duty){
+	PWM1_3_CMPA_R = duty - 1;
+	// count value when output rises
+}
+
+void TIMER0A_Handler(void){
+	for(;;){} // TODO - remove as this is for testing only
+	
+	
 	T = Current_speed(voltage); // TODO- edit
 		// estimate speed, set T, 0 to 255
-	Ts = desired_speed // TODO- edit
+	Ts = Ts; // TODO- variables might be changed around for equalling Ts
 
 	CrispInput(); // Calculate E,D and new Told
 	InputMembership(); // Sets Fast, OK, Slow, Down,
@@ -165,34 +181,48 @@ void Timer0A_Handler(void){
 	OutputMembership(); // Sets Increase, Same, Decrease
 	CrispOutput(); // Sets dN
 	N = max(0,min(N+dN,255));
-	PWM0A_Duty(N); // output to actuator
+	PWM1C_Duty(N); // output to actuator
 	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
 	// timer
 }
 
-// TODO- set up PWM
-void PWM1C_Duty(uint16_t duty){
-	PWM1_3_CMPA_R = duty - 1;
-	// count value when output rises
-}
 // End of fuzzy logic
 
 void Keypad(void) {
-
+	OS_Wait(&sLCD);
+	Set_Position(0x00);
+	Display_Msg("Input RPM:");
+	OS_Signal(&sLCD);
+	for(;;){
+		// output keypad to top of LCD
+		OS_Wait(&sLCD);
+		Set_Position(key_rpm_pos);
+		// display keypad number
+		Display_Char((char) Ts + 0x30); //TODO- put actual variable from keypad
+		//key_rpm_pos = key_rpm_pos + 1; // TODO - set this in terms of keypad
+		OS_Signal(&sLCD);
+	} 
 }
 
-void LCD(void) {
-	// display input rpm
-	// next line display target and current rpm
-	SetPosition(0x00);
-	Display_Msg("Input RPM:");
-	// display keypad number
-	Display_Char((char) key_rpm); //TODO- put actual variable from keypad
-	SetPosition(0x40); // next line
-	Display_Msg("T:");
-	Display_Char((char) key_rpm);
-	Display_Msg(" C:");
-	Display_Char((char) cur_rpm); //TODO- put actuall current rpm
+void LCD_Bottom(void) {
+	for(;;) {
+		OS_Wait(&sLCD);
+		// display input rpm
+		// next line display target and current rpm
+		
+		Set_Position(0x40); // next line
+		Display_Msg("T: ");
+		Display_Char((char) Ts / 1000 + 0x30);
+		Display_Char((char) (Ts / 100) % 10 + 0x30);
+		Display_Char((char) (Ts / 10) % 10 + 0x30);
+		Display_Char((char) Ts % 10 + 0x30);
+		Display_Msg(" C: ");
+		Display_Char((char) T / 1000 + 0x30); //TODO- put actuall current rpm
+		Display_Char((char) (T / 100) % 10 + 0x30);
+		Display_Char((char) (T / 10) % 10 + 0x30);
+		Display_Char((char) T % 10 + 0x30);
+		OS_Signal(&sLCD);
+	}
 }
 
 int main(void){
@@ -200,7 +230,7 @@ int main(void){
 	OS_InitSemaphore(&sLCD, 1); // sLCD is initially 1
 	Init_LCD_Ports();
 	Init_LCD();
-	Init_Clock();
+	Clock_Init();
 	
   SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
@@ -209,7 +239,7 @@ int main(void){
 	GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
 	GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
 		
-  OS_AddThreads(&DCMotor, &ADC, &Timer0A_Handler, &Keypad, &LCD);
+  OS_AddThreads(&DCMotor, &ADC, &Keypad, &LCD_Bottom);
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
