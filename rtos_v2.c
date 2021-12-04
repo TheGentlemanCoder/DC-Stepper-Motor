@@ -24,6 +24,7 @@
 #include "TM4C123GH6PM.h"
 #include "tm4c123gh6pm_def.h"
 #include <stdio.h>
+#include <math.h>
 
 #define TIMESLICE               32000  // thread switch time in system time units
 																			// clock frequency is 16 MHz, switching time is 2ms
@@ -32,11 +33,11 @@ uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
 // variables for controller
-uint8_t Ts = 0; // Desired Speed in 3.9 rpm units
-uint8_t T = 0; // Current Speed in 3.9 rpm units
-uint8_t Told = 0; // initial val 0 // Previous Speed in 3.9 rpm units
-int8_t D; // Change in Speed in 3.9 rpm/time units
-int8_t E; // Error in Speed in 3.9 rpm units
+uint32_t Ts = 0; // Desired Speed in 3.9 rpm units
+uint32_t T = 0; // Current Speed in 3.9 rpm units
+uint32_t Told = 0; // initial val 0 // Previous Speed in 3.9 rpm units
+int32_t D; // Change in Speed in 3.9 rpm/time units
+int32_t E; // Error in Speed in 3.9 rpm units
 
 # define TE 20
 uint8_t Fast, OK, Slow;
@@ -55,6 +56,9 @@ uint32_t button_pressed = 0x00;
 uint32_t clear_top = 0x00;
 int32_t sLCD = 1; // LCD Semaphore
 int32_t key_rpm_pos = 0x0B;
+int32_t counter = 0;
+int32_t key_rpm = 0;
+int32_t test = 0;
 
 void OS_Init(void);
 void OS_AddThreads(void f1(void), void f2(void), void f3(void), void f4(void));
@@ -80,6 +84,10 @@ void Init_LCD_Ports(void);
 void Init_LCD(void);
 void Clock_Init(void);
 
+void Init_Keypad(void);
+void Read_Key(void);
+void Delay1ms(void);
+
 void TIMER0A_Handler(void); // thread function header
 
 // helper function for voltage to speed
@@ -87,6 +95,13 @@ int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
                                            // DC motor RPM given the voltage in mV
   if (Avg_volt<= 1200) {return 0;}
   else {return ((21408*Avg_volt)>>16)-225;}
+}
+
+void DisplayOrNot(uint8_t num) {
+	if(num == 0)
+		Display_Char(' ');
+	else
+		Display_Char((char) (num+0x30));
 }
 
 void DCMotor(void) {
@@ -196,10 +211,22 @@ void Keypad(void) {
 	for(;;){
 		// output keypad to top of LCD
 		OS_Wait(&sLCD);
-		Set_Position(key_rpm_pos);
+		Set_Position(key_rpm_pos + counter);
 		// display keypad number
-		Display_Char((char) Ts + 0x30); //TODO- put actual variable from keypad
-		//key_rpm_pos = key_rpm_pos + 1; // TODO - set this in terms of keypad
+		Read_Key();
+		if(Key_ASCII == 0x23 || counter >= 4)
+		{
+			Set_Position(0x00);
+			Display_Msg("Input RPM:     ");
+			counter = 0;
+			Ts = key_rpm;
+			key_rpm = 0;
+		}
+		else {
+			Display_Char(Key_ASCII); //TODO- put actual variable from keypad
+			key_rpm = (Key_ASCII - 0x30) * pow(10, 3-counter) + key_rpm; // start from thousandths then go to ones
+			counter = counter + 1; // TODO - set this in terms of keypad
+		}
 		OS_Signal(&sLCD);
 	} 
 }
@@ -212,15 +239,15 @@ void LCD_Bottom(void) {
 		
 		Set_Position(0x40); // next line
 		Display_Msg("T: ");
-		Display_Char((char) Ts / 1000 + 0x30);
-		Display_Char((char) (Ts / 100) % 10 + 0x30);
-		Display_Char((char) (Ts / 10) % 10 + 0x30);
-		Display_Char((char) Ts % 10 + 0x30);
+		DisplayOrNot(Ts / 1000);
+		DisplayOrNot((Ts / 100) % 10);
+		DisplayOrNot((Ts / 10) % 10);
+		Display_Char((char) (Ts % 10 + 0x30));
 		Display_Msg(" C: ");
-		Display_Char((char) T / 1000 + 0x30); //TODO- put actuall current rpm
-		Display_Char((char) (T / 100) % 10 + 0x30);
-		Display_Char((char) (T / 10) % 10 + 0x30);
-		Display_Char((char) T % 10 + 0x30);
+		DisplayOrNot(T / 1000); //TODO- put actuall current rpm
+		DisplayOrNot((T / 100) % 10);
+		DisplayOrNot((T / 10) % 10);
+		Display_Char((char) (T % 10 + 0x30));
 		OS_Signal(&sLCD);
 	}
 }
@@ -231,6 +258,7 @@ int main(void){
 	Init_LCD_Ports();
 	Init_LCD();
 	Clock_Init();
+	Init_Keypad();
 	
   SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
