@@ -219,22 +219,25 @@ void SetInitialStack(int i){
 
 //******** OS_AddThread ***************
 // add three foregound threads to the scheduler
-// Inputs: three pointers to a void/void foreground tasks
+// Inputs: pointers to a void/void foreground tasks
 // Outputs: 1 if successful, 0 if this thread can not be added
-int OS_AddThreads(void(*task0)(void),
-                 void(*task1)(void))/*,
-                 void(*task2)(void),
-								 void (*task3) (void) )*/
-                                { int32_t status;
+int OS_AddThreads(void (*task0) (void),
+                  void (*task1) (void),
+                  void (*task2) (void),
+								  void (*task3) (void),
+									void (*task4) (void)) {
+	int32_t status;
   status = StartCritical();
   tcbs[0].next = &tcbs[1]; // 0 points to 1
   tcbs[1].next = &tcbs[0]; // 1 points to 0
- // tcbs[2].next = &tcbs[3]; // 2 points to 3
-//	tcbs[3].next = &tcbs[0]; // 3 points to 0
+	tcbs[2].next = &tcbs[3]; // 2 points to 3
+	tcbs[3].next = &tcbs[4]; // 3 points to 4
+	tcbs[4].next = &tcbs[0]; // 4 points to 0
   SetInitialStack(0); Stacks[0][STACKSIZE-2] = (int32_t)(task0); // PC
   SetInitialStack(1); Stacks[1][STACKSIZE-2] = (int32_t)(task1); // PC
-//  SetInitialStack(2); Stacks[2][STACKSIZE-2] = (int32_t)(task2); // PC
-//	SetInitialStack(3); Stacks[3][STACKSIZE-2] = (int32_t)(task3); // PC
+	SetInitialStack(2); Stacks[2][STACKSIZE-2] = (int32_t)(task2); // PC
+	SetInitialStack(3); Stacks[3][STACKSIZE-2] = (int32_t)(task3); // PC
+	SetInitialStack(4); Stacks[4][STACKSIZE-2] = (int32_t)(task4); // PC
   RunPt = &tcbs[0];       // thread 0 will run first
   EndCritical(status);
   return 1;               // successful
