@@ -1,12 +1,12 @@
 #include "TM4C123GH6PM.h"
-
+#include "delay.h"
 
 void MOT12_Init(uint16_t period, uint16_t duty)
 {  // motor connects MOT1 & MOT2
     SYSCTL->RCGCPWM |= 0x02;        // enable clock to PWM1
 	  //setting up PF2
     SYSCTL->RCGCGPIO |= 0x20;       // Activate port F
-	  while(SYSCTL->RCGCGPIO != 0x20){};
+	  delayMs(1);   
     GPIOF->DIR |= 0x04;             // set PF2 pins as output (LED) pin
     GPIOF->DEN |= 0x04;             // set PF2 pins as digital pins
     GPIOF->AFSEL |= 0x04;           // PF2 enable alternate function
@@ -14,7 +14,7 @@ void MOT12_Init(uint16_t period, uint16_t duty)
     GPIOF->PCTL |= 0x00000500;      // set PF2 alternate function to PWM1
 		GPIOF->AMSEL |= 0x04;           // disable analog functions on PF2
 		//setting up PWM1_3
-    while(SYSCTL->RCGCPWM != 0x02){};// PWM6 seems to take a while to start
+							// PWM6 seems to take a while to start
     SYSCTL->RCC &= ~0x001E0000;     // use PWM DIV and divide clock by 64
     PWM1->_3_CTL = 0;               // disable PWM1_3 during configuration
     PWM1->_3_GENA = 0x000000C8;   // output low for load, high for match
@@ -52,8 +52,8 @@ void PWM_setup(void){
 	uint16_t value = (RPM - 400);
 	
 	//initalization
-	MOT12_Init(period,2000);
-	//MOT12_Speed_Set(duty);
+	MOT12_Init(period,2500);
+	MOT12_Speed_Set(2000);
 	
 	//duty = (duty_gradient*(RPM-400)) + full_stop_duty;
 	

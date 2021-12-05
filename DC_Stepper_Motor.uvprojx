@@ -415,9 +415,9 @@
               <FilePath>.\osasm_V2.s</FilePath>
             </File>
             <File>
-              <FileName>Voltage2RPM.c</FileName>
+              <FileName>delay.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Voltage2RPM.c</FilePath>
+              <FilePath>.\delay.c</FilePath>
             </File>
           </Files>
         </Group>

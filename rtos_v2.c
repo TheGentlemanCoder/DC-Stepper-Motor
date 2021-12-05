@@ -106,8 +106,9 @@ void DisplayOrNot(uint8_t num) {
 }
 
 void DCMotor(void) {
+	MOT12_Speed_Set(2000);
 	for(;;){	
-		MOT12_Speed_Set(2000);
+		
 	}
 }
 
@@ -263,7 +264,7 @@ int main(void){
 	Clock_Init();
 	Init_Keypad();
 	PWM_setup();
-	
+	MOT12_Speed_Set(2000);
 
 	
   SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
