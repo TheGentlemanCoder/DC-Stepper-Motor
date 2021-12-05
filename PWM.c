@@ -1,9 +1,24 @@
 #include "TM4C123GH6PM.h"
+#include "tm4c123gh6pm_def.h"
 #include "delay.h"
+
+void OS_DisableInterrupts(void); // Disable interrupts
+void OS_EnableInterrupts(void);  // Enable interrupts
+
+void MOT12_Dir_Set_Forward(void) {
+	GPIOB->DATA &= ~0x01;
+	GPIOB->DATA |= 0x02;
+}
+
+void MOT12_Dir_Set_Backward(void) {
+	GPIOB->DATA |= 0x01;
+	GPIOB->DATA &= ~0x02;
+}
 
 void MOT12_Init(uint16_t period, uint16_t duty)
 {  // motor connects MOT1 & MOT2
-    SYSCTL->RCGCPWM |= 0x02;        // enable clock to PWM1
+	  OS_DisableInterrupts();
+		SYSCTL->RCGCPWM |= 0x02;        // enable clock to PWM1
 	  //setting up PF2
     SYSCTL->RCGCGPIO |= 0x20;       // Activate port F
 	  delayMs(1);   
@@ -13,7 +28,7 @@ void MOT12_Init(uint16_t period, uint16_t duty)
     GPIOF->PCTL &= ~0x00000F00;     // clear PF2 alternate function
     GPIOF->PCTL |= 0x00000500;      // set PF2 alternate function to PWM1
 		GPIOF->AMSEL |= 0x04;           // disable analog functions on PF2
-		//setting up PWM1_3
+		delayMs(1);   //setting up PWM1_3
 							// PWM6 seems to take a while to start
     SYSCTL->RCC &= ~0x001E0000;     // use PWM DIV and divide clock by 64
     PWM1->_3_CTL = 0;               // disable PWM1_3 during configuration
@@ -22,9 +37,16 @@ void MOT12_Init(uint16_t period, uint16_t duty)
     PWM1->_3_CMPA = duty-1;         // percent*(loadvalue+1)-1
     PWM1->_3_CTL = 1;               // enable PWM1_3
     PWM1->ENABLE |= 0x40;           // enable PWM1
+	
+		// enable Port B
+		SYSCTL->RCGCGPIO |= 0x02;
+		while ((SYSCTL->PRGPIO & 0x02) == 0) {};
+			
+		GPIOB->DEN |= 0x03;
+		GPIOB->DIR |= 0x03;
+			
+		OS_EnableInterrupts();
 }
-
-
 
 // Subroutine to set the DC motor duty cycle. Higher duty cycle
 // means that the motor will spin faster. Note that duty must be
@@ -42,7 +64,7 @@ void PWM_setup(void){
 	//period of the PWM
 	uint16_t period = 2500;
 	// required to keep a minimum duty cycle
-	uint16_t minmum_duty = 450; 
+	uint16_t minmum_duty = 1000; //450; 
 	// divide by inputs
 	//uint16_t duty_gradient = (period - 2 * minmum_duty) / 2000; 
 	// begin at stop
@@ -52,8 +74,10 @@ void PWM_setup(void){
 	uint16_t value = (RPM - 400);
 	
 	//initalization
-	MOT12_Init(period,2500);
-	MOT12_Speed_Set(2000);
+	MOT12_Init(period,duty);
+	
+	MOT12_Dir_Set_Forward();
+	//MOT12_Speed_Set(2000);
 	
 	//duty = (duty_gradient*(RPM-400)) + full_stop_duty;
 	
