@@ -10,6 +10,7 @@
       <TargetName>Target 1</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
+      <pCCUsed>5060422::V5.06 update 4 (build 422)::ARMCC</pCCUsed>
       <TargetOption>
         <TargetCommonOption>
           <Device>TM4C123GH6PM</Device>
@@ -392,11 +393,6 @@
               <FileName>Target_Speed_FIFO.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Target_Speed_FIFO.c</FilePath>
-            </File>
-            <File>
-              <FileName>Voltage2RPM.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Voltage2RPM.c</FilePath>
             </File>
             <File>
               <FileName>LCD_Logic.h</FileName>

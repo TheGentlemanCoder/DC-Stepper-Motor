@@ -31,6 +31,7 @@ GPIO_PORTE_DEN_R        EQU		0x4002451C
 ;	EXPORT	Init_Clock
 	EXPORT	Init_LCD_Ports
 	EXPORT	Init_LCD
+	EXPORT	Clear_LCD
 
 		
 Init_LCD_Ports
@@ -239,7 +240,23 @@ Init_LCD
 	BL		Delay1ms	; wait for 1ms
 	POP		{LR, R1, R0}
 	BX		LR
-	
+
+; Subroutine to clear the LCD
+Clear_LCD
+	PUSH	{LR, R1, R0}
+	; send byte 7 of code to LCD
+	MOV		R0,	#0x01		; R1 <- byte #7 of code: $01
+				;  db0 = 1 (clears display and returns
+				;	the cursor home).		 
+	BL		SplitNum	;
+	BL		WriteCMD	; write upper 4 bits of byte #8
+	MOV		R0,R1
+	BL		WriteCMD	; write lower 4 bits of byte #8
+	MOV		R0,	#3		;
+	BL		Delay1ms	; wait for 3ms
+	POP		{LR, R1, R0}
+	BX		LR
+
 ; Subroutine Set_Blink_ON: sets the blink on at the character indicated by R0
 Set_Blink_ON
 	PUSH	{LR, R1, R0}

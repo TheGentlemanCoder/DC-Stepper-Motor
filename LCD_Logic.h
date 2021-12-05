@@ -1,3 +1,3 @@
 #include <stdint.h>
 
-int32_t LCDMutex;
+int32_t sLCD;

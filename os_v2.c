@@ -29,7 +29,7 @@ void OS_InitSemaphore(int32_t *Sem, int32_t val);
 #define NUMTHREADS  4        // maximum number of threads
 #define STACKSIZE   100      // number of 32-bit words in stack
 
-uint32_t Mail;		// mailbox support
+int32_t Mail;		// mailbox support
 int32_t Send;    // mailbox semaphore
 uint32_t Lost_mailbox;     // mailbox lost data
 
@@ -49,6 +49,9 @@ typedef struct tcb tcbType;
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];
+
+// used by the Keypad.s module
+uint8_t Key_ASCII;
 
 
 // ******** OS_Suspend ************
@@ -123,7 +126,7 @@ void Scheduler(void){
 }
 
 
-void SendMail(uint32_t data){
+void SendMail(int32_t data){
   Mail=data;
 	if(Send){
 		Lost_mailbox++;
@@ -133,7 +136,7 @@ void SendMail(uint32_t data){
 	}
 }
 
-uint32_t RecvMail(void){
+int32_t RecvMail(void){
   OS_Wait(&Send);
 	return Mail;
 }
@@ -143,44 +146,6 @@ uint32_t RecvMail(void){
 void OS_InitSemaphore(int32_t *Sem, int32_t val){
 	*Sem=val;
 }
-
-// The FIFO Support - one semaphore FIFO
-// This FIFO is dedicated to communicate data between
-// one event thread and one main thread
-#define FIFOSIZE 10 // can be any size
-uint32_t PutI;      // index of where to put next
-uint32_t GetI;      // index of where to get next
-uint32_t Fifo[FIFOSIZE];
-int32_t CurrentSize; // 0 means FIFO empty, FIFOSIZE means full
-uint32_t LostData;  // number of lost pieces of data
-
-void OS_FIFO_Init(void){
-	PutI = GetI = 0;   // Empty
-	OS_InitSemaphore(&CurrentSize, 0);
-  LostData = 0;
-} 
-
-int OS_FIFO_Put(uint32_t data){
-	if(CurrentSize == FIFOSIZE){
-		LostData++; return -1;  // full
-		}
-	else{
-		Fifo[PutI] = data;       // Put
-		PutI = (PutI+1)%FIFOSIZE;
-		OS_Signal(&CurrentSize);
-		return 0;   // success
-		} 
-} 
-
-uint32_t OS_FIFO_Get(void){
-	uint32_t FIFO_data; 
-	OS_Wait(&CurrentSize);    // block if empty
-	FIFO_data = Fifo[GetI];        // get 
-	GetI = (GetI+1)%FIFOSIZE; // place to get next return
-	return FIFO_data;
-}
-
-
 
 // ******** OS_Init ************
 // initialize operating system, disable interrupts until OS_Launch
@@ -224,20 +189,17 @@ void SetInitialStack(int i){
 int OS_AddThreads(void (*task0) (void),
                   void (*task1) (void),
                   void (*task2) (void),
-								  void (*task3) (void),
-									void (*task4) (void)) {
+								  void (*task3) (void)) {
 	int32_t status;
   status = StartCritical();
   tcbs[0].next = &tcbs[1]; // 0 points to 1
   tcbs[1].next = &tcbs[0]; // 1 points to 0
 	tcbs[2].next = &tcbs[3]; // 2 points to 3
-	tcbs[3].next = &tcbs[4]; // 3 points to 4
-	tcbs[4].next = &tcbs[0]; // 4 points to 0
+	tcbs[3].next = &tcbs[0]; // 3 points to 0
   SetInitialStack(0); Stacks[0][STACKSIZE-2] = (int32_t)(task0); // PC
   SetInitialStack(1); Stacks[1][STACKSIZE-2] = (int32_t)(task1); // PC
 	SetInitialStack(2); Stacks[2][STACKSIZE-2] = (int32_t)(task2); // PC
 	SetInitialStack(3); Stacks[3][STACKSIZE-2] = (int32_t)(task3); // PC
-	SetInitialStack(4); Stacks[4][STACKSIZE-2] = (int32_t)(task4); // PC
   RunPt = &tcbs[0];       // thread 0 will run first
   EndCritical(status);
   return 1;               // successful

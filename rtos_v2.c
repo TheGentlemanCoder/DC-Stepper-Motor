@@ -24,6 +24,8 @@
 #include "TM4C123GH6PM.h"
 #include "tm4c123gh6pm_def.h"
 #include <stdio.h>
+#include "ADC.h"
+#include "LCD_Logic.h"
 
 #define TIMESLICE               32000  // thread switch time in system time units
 																			// clock frequency is 16 MHz, switching time is 2ms
@@ -52,7 +54,7 @@ uint32_t button_pressed = 0x00;
 uint32_t clear_top = 0x00;
 
 void OS_Init(void);
-void OS_AddThreads(void f1(void), void f2(void), void f3(void), void f4(void), void f5(void));
+void OS_AddThreads(void f1(void), void f2(void), void f3(void), void f4(void));
 void OS_Launch(uint32_t);
 void OS_Sleep(uint32_t SleepCtr);
 void OS_Fifo_Put(uint32_t data);
@@ -62,7 +64,6 @@ void OS_InitSemaphore(int32_t *S, int val);
 void OS_Wait(int32_t *S);
 void OS_Signal(int32_t *S);
 int32_t get_size(void);
-void clrLCD(void);
 
 void OS_DisableInterrupts(void); // Disable interrupts
 void OS_EnableInterrupts(void);  // Enable interrupts
@@ -74,6 +75,11 @@ void Set_Position(int pos);
 void Init_LCD_Ports(void);
 void Init_LCD(void);
 void Init_Clock(void);
+void Clear_LCD(void);
+
+// function definitions provided in ASCII_Conversions.s
+char* Hex2ASCII(int32_t);
+int32_t ASCII2Hex(char);
 
 // helper function for voltage to speed
 int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
@@ -83,12 +89,7 @@ int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
 }
 
 void DCMotor(void) {
-
-}
-
-// get this working first
-void ADC(void) {
-
+	while(1) {}; // loop infinitely
 }
 
 // Fuzzy Logic
@@ -142,7 +143,7 @@ uint8_t static max(uint8_t u1,uint8_t u2){
 
 void OutputMembership(void){ // relationship between the input fuzzy membership sets and fuzzy output membership values
 	Same = min(OK,Constant);
-	Decrease = min(OK,Up)
+	Decrease = min(OK,Up);
 	Decrease = max(Decrease,min(Fast,Constant));
 	Decrease = max(Decrease,min(Fast,Up));
 	Increase = min(OK,Down);
@@ -154,6 +155,11 @@ void CrispOutput(void){ // Defuzzification
 	dN=(TN*(Increase-Decrease))/(Decrease+Same+Increase);
 }
 
+void Controller(void) {
+	while(1) {}; // loop infinitely
+}
+
+/*
 void Timer0A_Handler(void){
 	T = Current_speed(voltage); // TODO- edit
 		// estimate speed, set T, 0 to 255
@@ -169,6 +175,7 @@ void Timer0A_Handler(void){
 	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
 	// timer
 }
+*/
 
 // TODO- set up PWM
 void PWM1C_Duty(uint16_t duty){
@@ -178,11 +185,16 @@ void PWM1C_Duty(uint16_t duty){
 // End of fuzzy logic
 
 void Keypad(void) {
-
+	while(1) {}; // loop infinitely
 }
 
 void LCD(void) {
-
+	char* message;
+	while(1) {
+		message = Hex2ASCII(average_millivolts);
+		Display_Msg(message);
+		Clear_LCD();
+	} // loop infinitely
 }
 
 int main(void){
@@ -190,16 +202,18 @@ int main(void){
 	OS_InitSemaphore(&sLCD, 1); // sLCD is initially 1
 	Init_LCD_Ports();
 	Init_LCD();
-	Init_Clock();
+	Clock_Init();
 	
-  SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
+	Init_ADC();
+	
+	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
   GPIO_PORTD_DIR_R &= ~0x0F;             // make PD3-0 input
   GPIO_PORTD_DEN_R |= 0x0F;             // enable digital I/O on PD3-1
 	GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
 	GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
 		
-  OS_AddThreads(&DCMotor, &ADC, &Timer0A_Handler, &Keypad, &LCD);
+  OS_AddThreads(&LCD, &Keypad, &Controller, &DCMotor);
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
