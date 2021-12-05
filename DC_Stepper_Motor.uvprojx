@@ -380,6 +380,11 @@
           <GroupName>Source Group 1</GroupName>
           <Files>
             <File>
+              <FileName>PWM.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\PWM.c</FilePath>
+            </File>
+            <File>
               <FileName>os_v2.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\os_v2.c</FilePath>
@@ -408,6 +413,11 @@
               <FileName>osasm_V2.s</FileName>
               <FileType>2</FileType>
               <FilePath>.\osasm_V2.s</FilePath>
+            </File>
+            <File>
+              <FileName>delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\delay.c</FilePath>
             </File>
           </Files>
         </Group>

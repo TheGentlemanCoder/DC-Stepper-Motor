@@ -25,6 +25,7 @@
 #include "tm4c123gh6pm_def.h"
 #include <stdio.h>
 #include <math.h>
+#include "PWM.h"
 
 #define TIMESLICE               32000  // thread switch time in system time units
 																			// clock frequency is 16 MHz, switching time is 2ms
@@ -105,7 +106,10 @@ void DisplayOrNot(uint8_t num) {
 }
 
 void DCMotor(void) {
-	for(;;){} 
+	MOT12_Speed_Set(2000);
+	for(;;){	
+		
+	}
 }
 
 // get this working first
@@ -259,6 +263,9 @@ int main(void){
 	Init_LCD();
 	Clock_Init();
 	Init_Keypad();
+	PWM_setup();
+	MOT12_Speed_Set(2000);
+
 	
   SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
