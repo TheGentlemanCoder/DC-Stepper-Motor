@@ -264,15 +264,15 @@ int main(void){
 	Clock_Init();
 	Init_Keypad();
 	PWM_setup();
-	MOT12_Speed_Set(2000);
+	//MOT12_Speed_Set(2000);
 
 	
   SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
   GPIO_PORTD_DIR_R &= ~0x0F;             // make PD3-0 input
   GPIO_PORTD_DEN_R |= 0x0F;             // enable digital I/O on PD3-1
-	GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
-	GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
+	//GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
+	//GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
 		
   OS_AddThreads(&DCMotor, &ADC, &Keypad, &LCD_Bottom);
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
