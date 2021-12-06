@@ -50,9 +50,6 @@ tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];
 
-// used by the Keypad.s module
-uint8_t Key_ASCII;
-
 
 // ******** OS_Suspend ************
 // suspends the current threads and triggers SysTick 

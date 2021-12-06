@@ -98,8 +98,6 @@ void Init_Keypad(void);
 void Read_Key(void);
 void Delay1ms(void);
 
-int32_t average_millivolts; // ADC will return value to here
-
 // helper function for voltage to speed
 int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
                                            // DC motor RPM given the voltage in mV
