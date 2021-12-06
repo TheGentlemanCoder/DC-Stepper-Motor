@@ -24,6 +24,8 @@
 #include "TM4C123GH6PM.h"
 #include "tm4c123gh6pm_def.h"
 #include <stdio.h>
+#include "ADC.h"
+#include "LCD_Logic.h"
 #include <math.h>
 #include "PWM.h"
 
@@ -72,7 +74,6 @@ void OS_InitSemaphore(int32_t *S, int val);
 void OS_Wait(int32_t *S);
 void OS_Signal(int32_t *S);
 int32_t get_size(void);
-void clrLCD(void);
 
 void OS_DisableInterrupts(void); // Disable interrupts
 void OS_EnableInterrupts(void);  // Enable interrupts
@@ -83,6 +84,12 @@ void Display_Char(char msg);
 void Set_Position(int32_t pos);
 void Init_LCD_Ports(void);
 void Init_LCD(void);
+void Init_Clock(void);
+void Clear_LCD(void);
+
+// function definitions provided in ASCII_Conversions.s
+char* Hex2ASCII(int32_t);
+int32_t ASCII2Hex(char);
 void Clock_Init(void);
 
 void Init_Keypad(void);
@@ -97,6 +104,7 @@ int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
   if (Avg_volt<= 1200) {return 0;}
   else {return ((21408*Avg_volt)>>16)-225;}
 }
+
 
 void DisplayOrNot(uint8_t num) {
 	if(num == 0)
@@ -180,11 +188,12 @@ void CrispOutput(void){ // Defuzzification
 	dN=(TN*(Increase-Decrease))/(Decrease+Same+Increase);
 }
 
-// TODO- set up PWM
-void PWM1C_Duty(uint16_t duty){
-	PWM1_3_CMPA_R = duty - 1;
-	// count value when output rises
+void Controller(void) {
+	while(1) {}; // loop infinitely
 }
+
+/*
+
 
 void TIMER0A_Handler(void){
 	for(;;){} // TODO - remove as this is for testing only
@@ -204,6 +213,7 @@ void TIMER0A_Handler(void){
 	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
 	// timer
 }
+*/
 
 // End of fuzzy logic
 
@@ -253,7 +263,6 @@ void LCD_Bottom(void) {
 		DisplayOrNot((T / 10) % 10);
 		Display_Char((char) (T % 10 + 0x30));
 		OS_Signal(&sLCD);
-	}
 }
 
 int main(void){
@@ -262,19 +271,22 @@ int main(void){
 	Init_LCD_Ports();
 	Init_LCD();
 	Clock_Init();
+
+	Init_ADC();
+
 	Init_Keypad();
 	PWM_setup();
 	//MOT12_Speed_Set(2000);
-
 	
-  SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
+	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
   GPIO_PORTD_DIR_R &= ~0x0F;             // make PD3-0 input
   GPIO_PORTD_DEN_R |= 0x0F;             // enable digital I/O on PD3-1
 	//GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
 	//GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
-		
-  OS_AddThreads(&DCMotor, &ADC, &Keypad, &LCD_Bottom);
+
+  OS_AddThreads(&LCD, &Keypad, &Controller, &DCMotor);
+
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }

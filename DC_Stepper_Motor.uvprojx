@@ -380,6 +380,11 @@
           <GroupName>Source Group 1</GroupName>
           <Files>
             <File>
+              <FileName>LCD_Logic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\LCD_Logic.c</FilePath
+            </File>
+            <File>
               <FileName>PWM.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\PWM.c</FilePath>
@@ -388,6 +393,21 @@
               <FileName>os_v2.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\os_v2.c</FilePath>
+            </File>
+            <File>
+              <FileName>Target_Speed_FIFO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Target_Speed_FIFO.c</FilePath>
+            </File>
+            <File>
+              <FileName>LCD_Logic.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\LCD_Logic.h</FilePath>
+            </File>
+            <File>
+              <FileName>os.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\os.h</FilePath>
             </File>
             <File>
               <FileName>rtos_v2.c</FileName>
@@ -413,6 +433,31 @@
               <FileName>osasm_V2.s</FileName>
               <FileType>2</FileType>
               <FilePath>.\osasm_V2.s</FilePath>
+            </File>
+            <File>
+              <FileName>rtos_v2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\rtos_v2.c</FilePath>
+            </File>
+            <File>
+              <FileName>ADC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ADC.c</FilePath>
+            </File>
+            <File>
+              <FileName>ADC.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\ADC.h</FilePath>
+            </File>
+            <File>
+              <FileName>Target_Speed_FIFO.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Target_Speed_FIFO.h</FilePath>
+            </File>
+            <File>
+              <FileName>tm4c123gh6pm_def.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\tm4c123gh6pm_def.h</FilePath>
             </File>
             <File>
               <FileName>delay.c</FileName>
