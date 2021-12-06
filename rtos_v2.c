@@ -189,31 +189,21 @@ void CrispOutput(void){ // Defuzzification
 }
 
 void Controller(void) {
-	while(1) {}; // loop infinitely
-}
-
-/*
-
-
-void TIMER0A_Handler(void){
-	for(;;){} // TODO - remove as this is for testing only
-	
-	
-	T = Current_speed(voltage); // TODO- edit
+	while(1) {
+		T = Current_speed(voltage); // TODO- edit
 		// estimate speed, set T, 0 to 255
-	Ts = Ts; // TODO- variables might be changed around for equalling Ts
+		Ts = Ts; // TODO- variables might be changed around for equalling Ts
 
-	CrispInput(); // Calculate E,D and new Told
-	InputMembership(); // Sets Fast, OK, Slow, Down,
-	//Constant, Up
-	OutputMembership(); // Sets Increase, Same, Decrease
-	CrispOutput(); // Sets dN
-	N = max(0,min(N+dN,255));
-	PWM1C_Duty(N); // output to actuator
-	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
-	// timer
+		CrispInput(); // Calculate E,D and new Told
+		InputMembership(); // Sets Fast, OK, Slow, Down,
+		//Constant, Up
+		OutputMembership(); // Sets Increase, Same, Decrease
+		CrispOutput(); // Sets dN
+		N = max(0,min(N+dN,255));
+		//PWM1C_Duty(N); // output to actuator
+	}; // loop infinitely
 }
-*/
+
 
 // End of fuzzy logic
 
@@ -263,6 +253,7 @@ void LCD_Bottom(void) {
 		DisplayOrNot((T / 10) % 10);
 		Display_Char((char) (T % 10 + 0x30));
 		OS_Signal(&sLCD);
+	}
 }
 
 int main(void){
@@ -276,16 +267,11 @@ int main(void){
 
 	Init_Keypad();
 	PWM_setup();
-	//MOT12_Speed_Set(2000);
 	
 	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
-  GPIO_PORTD_DIR_R &= ~0x0F;             // make PD3-0 input
-  GPIO_PORTD_DEN_R |= 0x0F;             // enable digital I/O on PD3-1
-	//GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
-	//GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
 
-  OS_AddThreads(&LCD, &Keypad, &Controller, &DCMotor);
+  OS_AddThreads(&LCD_Bottom, &Keypad, &Controller, &DCMotor);
 
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
