@@ -36,11 +36,11 @@ uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
 // variables for controller
-uint32_t Ts = 0; // Desired Speed in 3.9 rpm units
-uint32_t T = 0; // Current Speed in 3.9 rpm units
+uint32_t Ts = 0; // Desired Speed in 9.4 rpm units
+uint32_t T = 0; // Current Speed in 9.4 rpm units
 uint32_t Told = 0; // initial val 0 // Previous Speed in 3.9 rpm units
-int32_t D; // Change in Speed in 3.9 rpm/time units
-int32_t E; // Error in Speed in 3.9 rpm units
+int32_t D; // Change in Speed in 9.4 rpm/time units
+int32_t E; // Error in Speed in 9.4 rpm units
 
 # define TE 20
 uint8_t Fast, OK, Slow;
@@ -61,10 +61,12 @@ int32_t sLCD = 1; // LCD Semaphore
 int32_t key_rpm_pos = 0x0B;
 int32_t counter = 0;
 int32_t key_rpm = 0;
+int32_t des_rpm = 0;
+int32_t cur_rpm = 0;
 int32_t test = 0;
 
 void OS_Init(void);
-void OS_AddThreads(void f1(void), void f2(void), void f3(void), void f4(void));
+void OS_AddThreads(void f1(void), void f2(void), void f3(void));
 void OS_Launch(uint32_t);
 void OS_Sleep(uint32_t SleepCtr);
 void OS_Fifo_Put(uint32_t data);
@@ -96,7 +98,7 @@ void Init_Keypad(void);
 void Read_Key(void);
 void Delay1ms(void);
 
-void TIMER0A_Handler(void); // thread function header
+int32_t average_millivolts; // ADC will return value to here
 
 // helper function for voltage to speed
 int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
@@ -113,22 +115,18 @@ void DisplayOrNot(uint8_t num) {
 		Display_Char((char) (num+0x30));
 }
 
+// not a thread
 void DCMotor(void) {
-	MOT12_Speed_Set(2000);
 	for(;;){	
-		
+		MOT12_Speed_Set(N);
 	}
 }
 
-// get this working first
-void ADC(void) {
-	for(;;){} 
-}
-
-// Fuzzy Logic
+// 8-bit Fuzzy Logic
 void CrispInput(void){
-	E = Ts - T; // from subtract function in pseudocode
-	D = T - Told;
+	// -, from subtract function in pseudocode
+	E = Ts - T; // E, error
+	D = T - Told; // D, acceleration
 	Told = T; // Set up Told for next time
 }
 
@@ -174,12 +172,16 @@ uint8_t static max(uint8_t u1,uint8_t u2){
 	if(u1<u2) return(u2);
 	else return(u1);}
 
+// In Fuzzy Logic and is performed by taking the minimum and or is by the maximum
+// Increase, Decrease, and Same are according to a table on the slides
 void OutputMembership(void){ // relationship between the input fuzzy membership sets and fuzzy output membership values
 	Same = min(OK,Constant);
+	// Decrease= (OK and Up) or (Fast and Constant) or (Fast and Up)
 	Decrease = min(OK,Up);
 	Decrease = max(Decrease,min(Fast,Constant));
 	Decrease = max(Decrease,min(Fast,Up));
 	Increase = min(OK,Down);
+	//Increase= (OK and Down) or (Slow and Constant) or (Slow and Down)
 	Increase = max(Increase,min(Slow,Constant));
 	Increase = max(Increase,min(Slow,Down));
 }
@@ -189,31 +191,22 @@ void CrispOutput(void){ // Defuzzification
 }
 
 void Controller(void) {
-	while(1) {}; // loop infinitely
-}
-
-/*
-
-
-void TIMER0A_Handler(void){
-	for(;;){} // TODO - remove as this is for testing only
-	
-	
-	T = Current_speed(voltage); // TODO- edit
+	while(1) {
+		cur_rpm = Current_speed(average_millivolts);
+		T = 256*cur_rpm/2400;
 		// estimate speed, set T, 0 to 255
-	Ts = Ts; // TODO- variables might be changed around for equalling Ts
+		Ts = 256*des_rpm/2400;
 
-	CrispInput(); // Calculate E,D and new Told
-	InputMembership(); // Sets Fast, OK, Slow, Down,
-	//Constant, Up
-	OutputMembership(); // Sets Increase, Same, Decrease
-	CrispOutput(); // Sets dN
-	N = max(0,min(N+dN,255));
-	PWM1C_Duty(N); // output to actuator
-	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
-	// timer
+		CrispInput(); // Calculate E,D and new Told
+		InputMembership(); // Sets Fast, OK, Slow, Down,
+		//Constant, Up
+		OutputMembership(); // Sets Increase, Same, Decrease
+		CrispOutput(); // Sets dN
+		N = max(0,min(N+dN,255));
+		DCMotor(); // update motor here
+	}; // loop infinitely
 }
-*/
+
 
 // End of fuzzy logic
 
@@ -233,7 +226,12 @@ void Keypad(void) {
 			Set_Position(0x00);
 			Display_Msg("Input RPM:     ");
 			counter = 0;
-			Ts = key_rpm;
+			if(key_rpm >= 2400)
+				des_rpm = 2400;
+			else if (key_rpm < 400)
+				des_rpm = 0;
+			else
+				des_rpm = key_rpm;
 			key_rpm = 0;
 		}
 		else {
@@ -253,16 +251,17 @@ void LCD_Bottom(void) {
 		
 		Set_Position(0x40); // next line
 		Display_Msg("T: ");
-		DisplayOrNot(Ts / 1000);
-		DisplayOrNot((Ts / 100) % 10);
-		DisplayOrNot((Ts / 10) % 10);
+		DisplayOrNot(des_rpm / 1000);
+		DisplayOrNot((des_rpm / 100) % 10);
+		DisplayOrNot((des_rpm / 10) % 10);
 		Display_Char((char) (Ts % 10 + 0x30));
 		Display_Msg(" C: ");
-		DisplayOrNot(T / 1000); //TODO- put actuall current rpm
-		DisplayOrNot((T / 100) % 10);
-		DisplayOrNot((T / 10) % 10);
-		Display_Char((char) (T % 10 + 0x30));
+		DisplayOrNot(cur_rpm / 1000); //TODO- put actuall current rpm
+		DisplayOrNot((cur_rpm / 100) % 10);
+		DisplayOrNot((cur_rpm / 10) % 10);
+		Display_Char((char) (cur_rpm % 10 + 0x30));
 		OS_Signal(&sLCD);
+	}
 }
 
 int main(void){
@@ -271,21 +270,14 @@ int main(void){
 	Init_LCD_Ports();
 	Init_LCD();
 	Clock_Init();
-
 	Init_ADC();
-
 	Init_Keypad();
 	PWM_setup();
-	//MOT12_Speed_Set(2000);
 	
 	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
-  GPIO_PORTD_DIR_R &= ~0x0F;             // make PD3-0 input
-  GPIO_PORTD_DEN_R |= 0x0F;             // enable digital I/O on PD3-1
-	//GPIO_PORTF_DIR_R |= 0x0E;								// make PF3-1 output
-	//GPIO_PORTF_DEN_R |= 0x0E;              // enable digital I/O on PF3-1
 
-  OS_AddThreads(&LCD, &Keypad, &Controller, &DCMotor);
+  OS_AddThreads(&LCD_Bottom, &Keypad, &Controller);
 
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
