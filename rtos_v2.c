@@ -36,11 +36,11 @@ uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
 // variables for controller
-uint32_t Ts = 0; // Desired Speed in 3.9 rpm units
-uint32_t T = 0; // Current Speed in 3.9 rpm units
+uint32_t Ts = 0; // Desired Speed in 9.4 rpm units
+uint32_t T = 0; // Current Speed in 9.4 rpm units
 uint32_t Told = 0; // initial val 0 // Previous Speed in 3.9 rpm units
-int32_t D; // Change in Speed in 3.9 rpm/time units
-int32_t E; // Error in Speed in 3.9 rpm units
+int32_t D; // Change in Speed in 9.4 rpm/time units
+int32_t E; // Error in Speed in 9.4 rpm units
 
 # define TE 20
 uint8_t Fast, OK, Slow;
@@ -61,6 +61,8 @@ int32_t sLCD = 1; // LCD Semaphore
 int32_t key_rpm_pos = 0x0B;
 int32_t counter = 0;
 int32_t key_rpm = 0;
+int32_t des_rpm = 0;
+int32_t cur_rpm = 0;
 int32_t test = 0;
 
 void OS_Init(void);
@@ -120,10 +122,11 @@ void DCMotor(void) {
 	}
 }
 
-// Fuzzy Logic
+// 8-bit Fuzzy Logic
 void CrispInput(void){
-	E = Ts - T; // from subtract function in pseudocode
-	D = T - Told;
+	// -, from subtract function in pseudocode
+	E = Ts - T; // E, error
+	D = T - Told; // D, acceleration
 	Told = T; // Set up Told for next time
 }
 
@@ -169,12 +172,16 @@ uint8_t static max(uint8_t u1,uint8_t u2){
 	if(u1<u2) return(u2);
 	else return(u1);}
 
+// In Fuzzy Logic and is performed by taking the minimum and or is by the maximum
+// Increase, Decrease, and Same are according to a table on the slides
 void OutputMembership(void){ // relationship between the input fuzzy membership sets and fuzzy output membership values
 	Same = min(OK,Constant);
+	// Decrease= (OK and Up) or (Fast and Constant) or (Fast and Up)
 	Decrease = min(OK,Up);
 	Decrease = max(Decrease,min(Fast,Constant));
 	Decrease = max(Decrease,min(Fast,Up));
 	Increase = min(OK,Down);
+	//Increase= (OK and Down) or (Slow and Constant) or (Slow and Down)
 	Increase = max(Increase,min(Slow,Constant));
 	Increase = max(Increase,min(Slow,Down));
 }
@@ -185,8 +192,10 @@ void CrispOutput(void){ // Defuzzification
 
 void Controller(void) {
 	while(1) {
-		T = Current_speed(average_millivolts); // TODO- edit
+		cur_rpm = Current_speed(average_millivolts);
+		T = 256*cur_rpm/2400;
 		// estimate speed, set T, 0 to 255
+		Ts = 256*des_rpm/2400;
 
 		CrispInput(); // Calculate E,D and new Told
 		InputMembership(); // Sets Fast, OK, Slow, Down,
@@ -217,7 +226,12 @@ void Keypad(void) {
 			Set_Position(0x00);
 			Display_Msg("Input RPM:     ");
 			counter = 0;
-			Ts = key_rpm;
+			if(key_rpm >= 2400)
+				des_rpm = 2400;
+			else if (key_rpm < 400)
+				des_rpm = 0;
+			else
+				des_rpm = key_rpm;
 			key_rpm = 0;
 		}
 		else {
@@ -237,15 +251,15 @@ void LCD_Bottom(void) {
 		
 		Set_Position(0x40); // next line
 		Display_Msg("T: ");
-		DisplayOrNot(Ts / 1000);
-		DisplayOrNot((Ts / 100) % 10);
-		DisplayOrNot((Ts / 10) % 10);
+		DisplayOrNot(des_rpm / 1000);
+		DisplayOrNot((des_rpm / 100) % 10);
+		DisplayOrNot((des_rpm / 10) % 10);
 		Display_Char((char) (Ts % 10 + 0x30));
 		Display_Msg(" C: ");
-		DisplayOrNot(T / 1000); //TODO- put actuall current rpm
-		DisplayOrNot((T / 100) % 10);
-		DisplayOrNot((T / 10) % 10);
-		Display_Char((char) (T % 10 + 0x30));
+		DisplayOrNot(cur_rpm / 1000); //TODO- put actuall current rpm
+		DisplayOrNot((cur_rpm / 100) % 10);
+		DisplayOrNot((cur_rpm / 10) % 10);
+		Display_Char((char) (cur_rpm % 10 + 0x30));
 		OS_Signal(&sLCD);
 	}
 }
