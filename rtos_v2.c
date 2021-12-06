@@ -64,7 +64,7 @@ int32_t key_rpm = 0;
 int32_t test = 0;
 
 void OS_Init(void);
-void OS_AddThreads(void f1(void), void f2(void), void f3(void), void f4(void));
+void OS_AddThreads(void f1(void), void f2(void), void f3(void));
 void OS_Launch(uint32_t);
 void OS_Sleep(uint32_t SleepCtr);
 void OS_Fifo_Put(uint32_t data);
@@ -96,7 +96,7 @@ void Init_Keypad(void);
 void Read_Key(void);
 void Delay1ms(void);
 
-void TIMER0A_Handler(void); // thread function header
+int32_t average_millivolts; // ADC will return value to here
 
 // helper function for voltage to speed
 int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
@@ -113,16 +113,11 @@ void DisplayOrNot(uint8_t num) {
 		Display_Char((char) (num+0x30));
 }
 
+// not a thread
 void DCMotor(void) {
-	MOT12_Speed_Set(2000);
 	for(;;){	
-		
+		MOT12_Speed_Set(N);
 	}
-}
-
-// get this working first
-void ADC(void) {
-	for(;;){} 
 }
 
 // Fuzzy Logic
@@ -190,9 +185,8 @@ void CrispOutput(void){ // Defuzzification
 
 void Controller(void) {
 	while(1) {
-		T = Current_speed(voltage); // TODO- edit
+		T = Current_speed(average_millivolts); // TODO- edit
 		// estimate speed, set T, 0 to 255
-		Ts = Ts; // TODO- variables might be changed around for equalling Ts
 
 		CrispInput(); // Calculate E,D and new Told
 		InputMembership(); // Sets Fast, OK, Slow, Down,
@@ -200,7 +194,7 @@ void Controller(void) {
 		OutputMembership(); // Sets Increase, Same, Decrease
 		CrispOutput(); // Sets dN
 		N = max(0,min(N+dN,255));
-		//PWM1C_Duty(N); // output to actuator
+		DCMotor(); // update motor here
 	}; // loop infinitely
 }
 
@@ -262,16 +256,14 @@ int main(void){
 	Init_LCD_Ports();
 	Init_LCD();
 	Clock_Init();
-
 	Init_ADC();
-
 	Init_Keypad();
 	PWM_setup();
 	
 	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
 
-  OS_AddThreads(&LCD_Bottom, &Keypad, &Controller, &DCMotor);
+  OS_AddThreads(&LCD_Bottom, &Keypad, &Controller);
 
   OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
