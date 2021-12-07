@@ -108,7 +108,7 @@ Read_PortD
 	ANDS	R1, #0x0F
 	BEQ		Done_Keypad; check for a low value
 
-	MOV		R0, #10		; add 10ms delay for
+	MOV		R0, #25		; add 10ms delay for
 	BL		Delay1ms	; debouncing the switch
 	
 	LDR		R0, =GPIO_PORTD_DATA_R		; read from Port D

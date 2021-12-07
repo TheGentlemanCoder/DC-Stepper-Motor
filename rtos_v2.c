@@ -90,8 +90,8 @@ void Init_Clock(void);
 void Clear_LCD(void);
 
 // function definitions provided in ASCII_Conversions.s
-char* Hex2ASCII(int32_t);
-int32_t ASCII2Hex(char);
+char* Hex2ASCII(char* retVal, int32_t);
+int32_t ASCII2Hex(char* str);
 void Clock_Init(void);
 
 void Init_Keypad(void);
@@ -105,11 +105,10 @@ int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
   else {return ((21408*Avg_volt)>>16)-225;}
 }
 
+uint32_t duty_cycle;
+
 
 void DisplayOrNot(uint8_t num) {
-	if(num == 0)
-		Display_Char(' ');
-	else
 		Display_Char((char) (num+0x30));
 }
 
@@ -213,12 +212,16 @@ void Keypad(void) {
 	Set_Position(0x00);
 	Display_Msg("Input RPM:");
 	OS_Signal(&sLCD);
+	uint8_t prev_Key_ASCII;
+	
 	for(;;){
 		// output keypad to top of LCD
 		OS_Wait(&sLCD);
 		Set_Position(key_rpm_pos + counter);
 		// display keypad number
+		
 		Read_Key();
+		
 		if(Key_ASCII == 0x23 || counter >= 4)
 		{
 			Set_Position(0x00);
@@ -272,6 +275,14 @@ int main(void){
 	Init_Keypad();
 	PWM_setup();
 	
+	/*
+	Start_Sample_ADC();
+	while(Read_ADC_BUSY() == 0) {};
+	int32_t temp = Retrieve_Sample_ADC();
+	average_millivolts = Sample_to_Millivolts(temp);
+	
+	return 0;
+	*/
 	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
 
