@@ -12,6 +12,20 @@ int32_t average_millivolts = 0;
 // accumulator variable used for calculating rolling average
 int32_t accum_millivolts = 0;
 
+void Timer0A_Init(void){
+  SYSCTL->RCGCTIMER |= 0x01;      // activate timer0
+	TIMER0->CTL &= ~0x00000001;     // disable timer0A during setup
+  TIMER0->CFG = 0x00000000;       // configure for timer mode
+  TIMER0->TAMR = 0x00000002;      // configure for periodic counting
+  TIMER0->TAILR = 0x00000640;     // start value
+	TIMER0->ICR = 0x00000004;       // clear timer0A capture match flag
+  TIMER0->IMR |= 0x00000001;      // enable timer interrupt
+	NVIC->IP[19] = 2 << 5;
+  NVIC->ISER[0] = 1 << 19;              // enable interrupt 19 in NVIC
+	TIMER0->CTL |= 0x00000001;      // timer0A 24-b, +edge, interrupts
+  __enable_irq();
+}
+
 void Init_ADC() {
 	// The ADC uses the following mapping:
 	// 	DB7 - DB4 => PE5 - PE2
@@ -59,6 +73,9 @@ void Init_ADC() {
 	/* enable interrupt in NVIC and set priority to 3 */
 	NVIC->IP[2] = 3 << 5;     /* set interrupt priority to 3 */
 	NVIC->ISER[0] |= (1<<2);  /* enable IRQ01 (D02 of ISER[0]) */
+	
+	// initialize timer
+	Timer0A_Init();
 }
 
 void Toggle_ADC_RC() {
@@ -125,24 +142,6 @@ int32_t Sample_to_Millivolts(int32_t sample) {
 	return retVal;
 }
 
-/*
-void Timer0A_Init(void){
-  SYSCTL->RCGCTIMER |= 0x01;      // activate timer0
-	TIMER0->CTL &= ~0x00000001;     // disable timer0A during setup
-  TIMER0->CFG = 0x00000004;       // configure for 16-bit capture mode
-  TIMER0->TAMR = 0x00000007;      // configure for rising edge event
-  TIMER0->CTL &= ~0x0000000C;     // rising edge
-  TIMER0->TAILR = 0x0000FFFF;     // start value
-  TIMER0->TAPR = 0xFF;            // activate prescale, creating 24-bit
-	TIMER0->ICR = 0x00000004;       // clear timer0A capture match flag
-  TIMER0->IMR |= 0x00000004;      // enable capture match interrupt
-	NVIC->IP[19] = 2 << 5;
-  NVIC->ISER[0] = 1 << 19;              // enable interrupt 19 in NVIC
-	TIMER0->CTL |= 0x00000001;      // timer0A 24-b, +edge, interrupts
-  __enable_irq();
-}
-*/
-
 void TIMER0A_Handler(void) {
 	// start next sample
 	Start_Sample_ADC();
@@ -150,8 +149,8 @@ void TIMER0A_Handler(void) {
 	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
 }
 
-void GPIOB_Handler(void) {
-	if (GPIOB->MIS & 0x40) {  
+void GPIOC_Handler(void) {
+	if (GPIOC->MIS & 0x20) {  
 		if (Read_ADC_BUSY() != 0) {
 			// sample is ready
 			accum_millivolts += Retrieve_Sample_ADC();
@@ -167,6 +166,6 @@ void GPIOB_Handler(void) {
 			}
 		}
 		
-		GPIOB->ICR |= 0x01; /* clear the interrupt flag */
+		GPIOC->ICR |= 0x01; /* clear the interrupt flag */
 	}
 }

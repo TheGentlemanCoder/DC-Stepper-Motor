@@ -210,7 +210,6 @@ void Keypad(void) {
 	Set_Position(0x00);
 	Display_Msg("Input RPM:");
 	OS_Signal(&sLCD);
-	uint8_t prev_Key_ASCII;
 	
 	for(;;){
 		// output keypad to top of LCD
