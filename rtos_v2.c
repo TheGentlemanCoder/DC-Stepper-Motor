@@ -78,8 +78,8 @@ void Init_Clock(void);
 void Clear_LCD(void);
 
 // function definitions provided in ASCII_Conversions.s
-char* Hex2ASCII(int32_t);
-int32_t ASCII2Hex(char);
+char* Hex2ASCII(char* retVal, int32_t);
+int32_t ASCII2Hex(char* str);
 
 // helper function for voltage to speed
 int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
@@ -88,8 +88,12 @@ int32_t Current_speed(int32_t Avg_volt){ // This function returns the current
   else {return ((21408*Avg_volt)>>16)-225;}
 }
 
+uint32_t duty_cycle;
+
 void DCMotor(void) {
-	while(1) {}; // loop infinitely
+	while(1) {
+		//MOT12_Speed_Set(duty_cycle);
+	}; // loop infinitely
 }
 
 // Fuzzy Logic
@@ -189,11 +193,12 @@ void Keypad(void) {
 }
 
 void LCD(void) {
-	char* message;
+	char message[] = {'0', '0', '0', '0', '\0'};
 	while(1) {
-		message = Hex2ASCII(average_millivolts);
+		Hex2ASCII(message, sample_count);
 		Display_Msg(message);
-		Clear_LCD();
+		Display_Msg(" ");
+		//Clear_LCD();
 	} // loop infinitely
 }
 
@@ -206,6 +211,14 @@ int main(void){
 	
 	Init_ADC();
 	
+	/*
+	Start_Sample_ADC();
+	while(Read_ADC_BUSY() == 0) {};
+	int32_t temp = Retrieve_Sample_ADC();
+	average_millivolts = Sample_to_Millivolts(temp);
+	
+	return 0;
+	*/
 	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
   while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
   GPIO_PORTD_DIR_R &= ~0x0F;             // make PD3-0 input

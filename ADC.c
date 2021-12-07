@@ -16,8 +16,8 @@ void Init_ADC() {
 	// The ADC uses the following mapping:
 	// 	DB7 - DB4 => PE5 - PE2
 	// 	DB3 - DB0 => PB5 - PB2
-	// 	R/C  => PD7
-	//	BUSY => PD6
+	// 	R/C  => PC4
+	//	BUSY => PC5
 	//  BYTE => Constant low (selects MSB from ADC)
 	
 	// Initialize data pins PE5 - PE2 as digital inputs
@@ -34,39 +34,43 @@ void Init_ADC() {
 	GPIO_PORTB_DIR_R &= ~(0x20 + 0x10 + 0x08 + 0x04);
 	GPIO_PORTB_DEN_R |=   0x20 + 0x10 + 0x08 + 0x04;
 	
-	// PB7 is used for the RC output signal on the ADC
-	GPIO_PORTB_DIR_R |= 0x80;
-	GPIO_PORTB_DEN_R |= 0x80;
+	// Initialize GPIO
+	SYSCTL_RCGCGPIO_R |= 0x04; // start clock for Port C
+	while ((SYSCTL_PRGPIO_R & 0x04) == 0) {};
 		
-	// PB6 is used for the BUSY signal input from the ADC
-	GPIO_PORTB_DIR_R &= ~(0x40);
-	GPIO_PORTB_DEN_R |=  (0x40);
+	// PC4 is used for the RC output signal on the ADC
+	GPIO_PORTC_DIR_R |= 0x10;
+	GPIO_PORTC_DEN_R |= 0x10;
+		
+	// PC5 is used for the BUSY signal input from the ADC
+	GPIO_PORTC_DIR_R &= ~(0x20);
+	GPIO_PORTC_DEN_R |=  (0x20);
 		
 	// default control signals
-	GPIO_PORTB_DATA_R |=  0x80; // set RC signal high
-		
-	// Initialize GPIO
-		
-	/* configure PORTB6 for rising edge trigger interrupt */
-	GPIO_PORTB_IS_R &= ~(1<<6)|~(1<<0);        /* make bit 4, 0 edge sensitive */
-	GPIO_PORTB_IBE_R &=~(1<<6)|~(1<<0);         /* trigger is controlled by IEV */
-	GPIO_PORTB_IEV_R &= ~(1<<6)|~(1<<0);        /* falling edge trigger */
-	GPIO_PORTB_ICR_R |= (1<<6)|(1<<0);          /* clear any prior interrupt */
-	GPIO_PORTB_IM_R  |= (1<<6)|(1<<0);          /* unmask interrupt */
+	GPIO_PORTC_DATA_R |= 0x10; // set RC signal high
+	
+	/* configure PORTC5 for rising edge trigger interrupt */
+	GPIO_PORTC_IS_R &= ~(1<<5)|~(1<<0);        /* make bit 5, 0 edge sensitive */
+	GPIO_PORTC_IBE_R &=~(1<<5)|~(1<<0);         /* trigger is controlled by IEV */
+	GPIO_PORTC_IEV_R |= (1<<5)|(1<<0);        /* rising edge trigger */
+	GPIO_PORTC_ICR_R |= (1<<5)|(1<<0);          /* clear any prior interrupt */
+	GPIO_PORTC_IM_R  |= (1<<5)|(1<<0);          /* unmask interrupt */
 	
 	/* enable interrupt in NVIC and set priority to 3 */
-	NVIC->IP[1] = 3 << 5;     /* set interrupt priority to 3 */
-	NVIC->ISER[0] |= (1<<1);  /* enable IRQ01 (D01 of ISER[0]) */
+	NVIC->IP[2] = 3 << 5;     /* set interrupt priority to 3 */
+	NVIC->ISER[0] |= (1<<2);  /* enable IRQ01 (D02 of ISER[0]) */
 }
 
 void Toggle_ADC_RC() {
-	GPIO_PORTB_DATA_R ^= 0x80;
+	// toggle PC4
+	GPIO_PORTC_DATA_R ^= 0x10;
 }
 
 // Active low signal, returns 0 if busy,
 // not zero if not busy
 uint8_t Read_ADC_BUSY() {
-	return GPIO_PORTB_DATA_R & 0x40;
+	// read PC5
+	return GPIO_PORTC_DATA_R & 0x20;
 }
 
 uint8_t Read_Data_Bits() {
@@ -82,8 +86,10 @@ uint8_t Read_Data_Bits() {
 
 void Start_Sample_ADC() {	
 	// start conversion
-	Toggle_ADC_RC();
-	Toggle_ADC_RC();
+	GPIO_PORTC_DATA_R &= ~0x10;
+	GPIO_PORTC_DATA_R |= 0x10;
+	//Toggle_ADC_RC();
+	//Toggle_ADC_RC();
 }
 
 // Returns a sample in the 12 LSBs of the return value
@@ -119,6 +125,24 @@ int32_t Sample_to_Millivolts(int32_t sample) {
 	return retVal;
 }
 
+/*
+void Timer0A_Init(void){
+  SYSCTL->RCGCTIMER |= 0x01;      // activate timer0
+	TIMER0->CTL &= ~0x00000001;     // disable timer0A during setup
+  TIMER0->CFG = 0x00000004;       // configure for 16-bit capture mode
+  TIMER0->TAMR = 0x00000007;      // configure for rising edge event
+  TIMER0->CTL &= ~0x0000000C;     // rising edge
+  TIMER0->TAILR = 0x0000FFFF;     // start value
+  TIMER0->TAPR = 0xFF;            // activate prescale, creating 24-bit
+	TIMER0->ICR = 0x00000004;       // clear timer0A capture match flag
+  TIMER0->IMR |= 0x00000004;      // enable capture match interrupt
+	NVIC->IP[19] = 2 << 5;
+  NVIC->ISER[0] = 1 << 19;              // enable interrupt 19 in NVIC
+	TIMER0->CTL |= 0x00000001;      // timer0A 24-b, +edge, interrupts
+  __enable_irq();
+}
+*/
+
 void TIMER0A_Handler(void) {
 	// start next sample
 	Start_Sample_ADC();
@@ -142,5 +166,7 @@ void GPIOB_Handler(void) {
 				sample_count = 0;
 			}
 		}
+		
+		GPIOB->ICR |= 0x01; /* clear the interrupt flag */
 	}
 }
