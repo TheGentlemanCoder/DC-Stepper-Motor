@@ -114,9 +114,7 @@ void DisplayOrNot(uint8_t num) {
 
 // not a thread
 void DCMotor(void) {
-	for(;;){	
-		MOT12_Speed_Set(N);
-	}
+	MOT12_Speed_Set(N);
 }
 
 // 8-bit Fuzzy Logic
