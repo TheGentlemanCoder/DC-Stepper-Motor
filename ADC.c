@@ -129,12 +129,10 @@ int32_t Sample_to_Millivolts(int32_t sample) {
 	
 	if (sample & 0x00000800) {
 		// sample is negative in two's complement, copy sign bit over
-		temp =   (0x00000FFF & sample);
-		temp |=  (0xFFFFF000);
+		temp = 0 - (sample);
 	} else {
 		// sample is positive in two's complement, copy sign bit over
-		temp =   (0x00000FFF & sample);
-		temp &= ~(0xFFFFF000);
+		temp = sample;  
 	}
 	
 	// project sample range onto signal's voltage range
@@ -157,7 +155,7 @@ void GPIOC_Handler(void) {
 	if (GPIOC->MIS & 0x20) {  
 		if (Read_ADC_BUSY() != 0) {
 			// sample is ready
-			accum_millivolts += Retrieve_Sample_ADC();
+			accum_millivolts += Sample_to_Millivolts(Retrieve_Sample_ADC());
 			++sample_count;
 			
 			if (sample_count >= NUM_SAMPLES) {

@@ -36,22 +36,7 @@ uint32_t Switches_in;
 uint32_t Switches_use;
 uint32_t prev_button;
 // variables for controller
-uint32_t Ts = 0; // Desired Speed in 9.4 rpm units
-uint32_t T = 0; // Current Speed in 9.4 rpm units
-uint32_t Told = 0; // initial val 0 // Previous Speed in 3.9 rpm units
-int32_t D; // Change in Speed in 9.4 rpm/time units
-int32_t E; // Error in Speed in 9.4 rpm units
-
-# define TE 20
-uint8_t Fast, OK, Slow;
-uint8_t Down, Constant, Up;
-#define TD 20
-uint8_t Increase, Same;
-uint8_t Decrease;
-#define TN 20
-int32_t dN;
-int32_t N = 0; //TODO- set this variable correctly
-int32_t voltage = 0; // TODO- might be different variable for the current voltage
+uint32_t N = 0;
 // end of controller variables
 
 uint8_t Key_ASCII; // contain value returned by Scan_Keypad
@@ -113,93 +98,26 @@ void DisplayOrNot(uint8_t num) {
 }
 
 // not a thread
-void DCMotor(void) {
-	MOT12_Speed_Set(N);
+void DCMotor(uint32_t scaled_fuzzy) {
+	MOT12_Speed_Set(scaled_fuzzy);
 }
 
-// 8-bit Fuzzy Logic
-void CrispInput(void){
-	// -, from subtract function in pseudocode
-	E = Ts - T; // E, error
-	D = T - Told; // D, acceleration
-	Told = T; // Set up Told for next time
-}
-
-void InputMembership(void){ // like the graphs for the membership
-	if(E <= -TE) { // E≤-TE
-		Fast = 255;
-		OK = 0;
-		Slow = 0;}
-	else if(E < 0){ // -TE<E<0
-		Fast = (255*(-E))/TE;
-		OK = 255-Fast;
-		Slow = 0;}
-	else if(E < TE){ // 0<E<TE
-		Fast = 0;
-		Slow = (255*E)/TE;
-		OK = 255-Slow;}
-	else { // +TE≤E
-		Fast = 0;
-		OK = 0;
-		Slow = 255;}
-	if(D <= -TD) {// D≤-TD
-		Down = 255;
-		Constant = 0;
-		Up = 0;}
-	else if(D < 0){// -TD<D<0
-		Down = (255*(-D))/TD;
-		Constant = 255-Down;
-		Up = 0;}
-	else if(D < TD){// 0<D<TD
-		Down = 0;
-		Up = (255*D)/TD;
-		Constant = 255-Up;}
-	else{ // +TD≤D
-		Down = 0;
-		Constant = 0;
-		Up = 255;} }
-
-uint8_t static min(uint8_t u1,uint8_t u2){
-	if(u1>u2) return(u2);
-	else return(u1);}
-
-uint8_t static max(uint8_t u1,uint8_t u2){
-	if(u1<u2) return(u2);
-	else return(u1);}
-
-// In Fuzzy Logic and is performed by taking the minimum and or is by the maximum
-// Increase, Decrease, and Same are according to a table on the slides
-void OutputMembership(void){ // relationship between the input fuzzy membership sets and fuzzy output membership values
-	Same = min(OK,Constant);
-	// Decrease= (OK and Up) or (Fast and Constant) or (Fast and Up)
-	Decrease = min(OK,Up);
-	Decrease = max(Decrease,min(Fast,Constant));
-	Decrease = max(Decrease,min(Fast,Up));
-	Increase = min(OK,Down);
-	//Increase= (OK and Down) or (Slow and Constant) or (Slow and Down)
-	Increase = max(Increase,min(Slow,Constant));
-	Increase = max(Increase,min(Slow,Down));
-}
-
-void CrispOutput(void){ // Defuzzification
-	dN=(TN*(Increase-Decrease))/(Decrease+Same+Increase);
-}
-
+// PID controller
 void Controller(void) {
+	uint32_t temp_controller;
+	double kF = 500;
+	double kP = 0.75;
 	while(1) {
 		cur_rpm = Current_speed(average_millivolts);
-		T = 256*cur_rpm/2400;
-		// estimate speed, set T, 0 to 255
-		Ts = 256*des_rpm/2400;
-
-		CrispInput(); // Calculate E,D and new Told
-		InputMembership(); // Sets Fast, OK, Slow, Down,
-		//Constant, Up
-		OutputMembership(); // Sets Increase, Same, Decrease
-		CrispOutput(); // Sets dN
-		N = max(0,min(N+dN,255));
-		DCMotor(); // update motor here
-	}; // loop infinitely
+		N = kP*(des_rpm-cur_rpm) + kF;
+		if(N >= 2500)
+			N = 2500;
+		else if(N <= 0 || des_rpm == 0)
+			N = 0;
+		else if(des_rpm < kF)
+			N = N - kF;
+		DCMotor(N); // update motor here
+	}
 }
 
 
