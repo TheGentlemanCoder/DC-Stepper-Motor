@@ -64,11 +64,12 @@ void Init_ADC() {
 	GPIO_PORTC_DATA_R |= 0x10; // set RC signal high
 	
 	/* configure PORTC5 for rising edge trigger interrupt */
-	GPIO_PORTC_IS_R &= ~(1<<5)|~(1<<0);        /* make bit 5, 0 edge sensitive */
-	GPIO_PORTC_IBE_R &=~(1<<5)|~(1<<0);         /* trigger is controlled by IEV */
-	GPIO_PORTC_IEV_R |= (1<<5)|(1<<0);        /* rising edge trigger */
-	GPIO_PORTC_ICR_R |= (1<<5)|(1<<0);          /* clear any prior interrupt */
-	GPIO_PORTC_IM_R  |= (1<<5)|(1<<0);          /* unmask interrupt */
+	GPIO_PORTC_IS_R  &= ~(0x20);        /* make bit 5, 0 edge sensitive */
+	GPIO_PORTC_IBE_R &= ~(0x20);         /* trigger is controlled by IEV */
+	GPIO_PORTC_IEV_R |=  (0x20);        /* rising edge trigger */
+	GPIO_PORTC_ICR_R |=  (0x20);          /* clear any prior interrupt */
+	GPIO_PORTC_PUR_R &= ~(0x20);					/* enable pull-up resistor for PC5 */
+	GPIO_PORTC_IM_R  |=  (0x20);          /* unmask interrupt */
 	
 	/* enable interrupt in NVIC and set priority to 3 */
 	NVIC->IP[2] = 3 << 5;     /* set interrupt priority to 3 */
@@ -143,13 +144,16 @@ int32_t Sample_to_Millivolts(int32_t sample) {
 }
 
 void TIMER0A_Handler(void) {
+	DisableInterrupts();
 	// start next sample
 	Start_Sample_ADC();
 	
 	TIMER0_ICR_R = 0x01; // acknowledge timer0A periodic
+	EnableInterrupts();
 }
 
 void GPIOC_Handler(void) {
+	DisableInterrupts();
 	if (GPIOC->MIS & 0x20) {  
 		if (Read_ADC_BUSY() != 0) {
 			// sample is ready
@@ -165,7 +169,7 @@ void GPIOC_Handler(void) {
 				sample_count = 0;
 			}
 		}
-		
-		GPIOC->ICR |= 0x01; /* clear the interrupt flag */
+		GPIOC->ICR |= 0x20; /* clear the interrupt flag */
 	}
+	EnableInterrupts();
 }
