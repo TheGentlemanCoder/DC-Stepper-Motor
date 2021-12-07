@@ -252,7 +252,7 @@ void LCD_Bottom(void) {
 		DisplayOrNot(des_rpm / 1000);
 		DisplayOrNot((des_rpm / 100) % 10);
 		DisplayOrNot((des_rpm / 10) % 10);
-		Display_Char((char) (Ts % 10 + 0x30));
+		Display_Char((char) (des_rpm % 10 + 0x30));
 		Display_Msg(" C: ");
 		DisplayOrNot(cur_rpm / 1000); //TODO- put actuall current rpm
 		DisplayOrNot((cur_rpm / 100) % 10);
@@ -263,28 +263,19 @@ void LCD_Bottom(void) {
 }
 
 int main(void){
+	DisableInterrupts();
   OS_Init();           // initialize, disable interrupts, 16 MHz
 	OS_InitSemaphore(&sLCD, 1); // sLCD is initially 1
+	Clock_Init();
 	Init_LCD_Ports();
 	Init_LCD();
-	Clock_Init();
-	Init_ADC();
 	Init_Keypad();
 	PWM_setup();
+	Init_ADC();
 	
-	/*
-	Start_Sample_ADC();
-	while(Read_ADC_BUSY() == 0) {};
-	int32_t temp = Retrieve_Sample_ADC();
-	average_millivolts = Sample_to_Millivolts(temp);
-	
-	return 0;
-	*/
-	SYSCTL_RCGCGPIO_R |= 0x28;            // activate clock for Ports F and D
-  while((SYSCTL_RCGCGPIO_R&0x28) == 0){} // allow time for clock to stabilize
-
-  OS_AddThreads(&LCD_Bottom, &Keypad, &Controller);
-
-  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+  OS_AddThreads(&Keypad, &LCD_Bottom, &Controller);
+  EnableInterrupts();
+		
+	OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
   return 0;             // this never executes
 }
