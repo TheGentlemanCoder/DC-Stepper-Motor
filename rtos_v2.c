@@ -144,8 +144,8 @@ void Keypad(void) {
 			counter = 0;
 			if(key_rpm >= 2400)
 				des_rpm = 2400;
-			else if (key_rpm < 400)
-				des_rpm = 0;
+			else if (key_rpm > 0 && key_rpm < 400)
+				des_rpm = 400;
 			else
 				des_rpm = key_rpm;
 			key_rpm = 0;
