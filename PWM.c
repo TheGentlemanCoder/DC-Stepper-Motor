@@ -21,16 +21,16 @@ void MOT12_Init(uint16_t period, uint16_t duty)
 		SYSCTL->RCGCPWM |= 0x02;        // enable clock to PWM1
 	  //setting up PF2
     SYSCTL->RCGCGPIO |= 0x20;       // Activate port F
-	  delayMs(1);   
+    delayMs(1);   
     GPIOF->DIR |= 0x04;             // set PF2 pins as output (LED) pin
     GPIOF->DEN |= 0x04;             // set PF2 pins as digital pins
     GPIOF->AFSEL |= 0x04;           // PF2 enable alternate function
     GPIOF->PCTL &= ~0x00000F00;     // clear PF2 alternate function
     GPIOF->PCTL |= 0x00000500;      // set PF2 alternate function to PWM1
-		GPIOF->AMSEL |= 0x04;           // disable analog functions on PF2
-		delayMs(1);   //setting up PWM1_3
-							// PWM6 seems to take a while to start
-    SYSCTL->RCC |= 0x001E0000;     // use PWM DIV and divide clock by 64
+    GPIOF->AMSEL |= 0x04;           // disable analog functions on PF2
+    delayMs(1);   		    //setting up PWM1_3
+				   // PWM6 seems to take a while to start
+    SYSCTL->RCC |= 0x001E0000;     // use PWM DIV and divide clock by 64 --> 16 MHz/64 = 250 KHz
     PWM1->_3_CTL = 0;               // disable PWM1_3 during configuration
     PWM1->_3_GENA = 0x000000C8;   // output low for load, high for match
     PWM1->_3_LOAD = period-1;       // 2499
@@ -38,14 +38,12 @@ void MOT12_Init(uint16_t period, uint16_t duty)
     PWM1->_3_CTL = 1;               // enable PWM1_3
     PWM1->ENABLE |= 0x40;           // enable PWM1
 	
-		// enable Port B
-		SYSCTL->RCGCGPIO |= 0x02;
-		while ((SYSCTL->PRGPIO & 0x02) == 0) {};
-			
-		GPIOB->DEN |= 0x03;
-		GPIOB->DIR |= 0x03;
-			
-		OS_EnableInterrupts();
+    // enable Port B for setting up motor direction
+    SYSCTL->RCGCGPIO |= 0x02;
+    while ((SYSCTL->PRGPIO & 0x02) == 0) {};		
+    GPIOB->DEN |= 0x03;
+    GPIOB->DIR |= 0x03;		
+    OS_EnableInterrupts();
 }
 
 // Subroutine to set the DC motor duty cycle. Higher duty cycle
@@ -62,24 +60,12 @@ void MOT12_Speed_Set(uint16_t duty)
 
 void PWM_setup(void){
 	//period of the PWM
-	uint16_t period = 2500;
-	// required to keep a minimum duty cycle
-	uint16_t minmum_duty = 1000; //450; 
-	// divide by inputs
-	//uint16_t duty_gradient = (period - 2 * minmum_duty) / 2000; 
-	// begin at stop
-	uint16_t duty = minmum_duty;
+	uint16_t period = 2500; // 250KHz/100Hz -1 = 2500
 	
-	uint16_t RPM = 2200;
-	uint16_t value = (RPM - 400);
+	// required to keep a minimum duty cycle
+	uint16_t minmum_duty = 450; //18% of 2500
 	
 	//initalization
 	MOT12_Init(period,duty);
-	
 	MOT12_Dir_Set_Forward();
-	//MOT12_Speed_Set(2000);
-	
-	//duty = (duty_gradient*(RPM-400)) + full_stop_duty;
-	
-	//duty = percent*(period)-1
 }
