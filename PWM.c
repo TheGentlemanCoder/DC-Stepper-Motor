@@ -30,7 +30,7 @@ void MOT12_Init(uint16_t period, uint16_t duty)
 		GPIOF->AMSEL |= 0x04;           // disable analog functions on PF2
 		delayMs(1);   //setting up PWM1_3
 							// PWM6 seems to take a while to start
-    SYSCTL->RCC &= ~0x001E0000;     // use PWM DIV and divide clock by 64
+    SYSCTL->RCC |= 0x001E0000;     // use PWM DIV and divide clock by 64
     PWM1->_3_CTL = 0;               // disable PWM1_3 during configuration
     PWM1->_3_GENA = 0x000000C8;   // output low for load, high for match
     PWM1->_3_LOAD = period-1;       // 2499
