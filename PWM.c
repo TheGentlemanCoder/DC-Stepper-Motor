@@ -66,6 +66,6 @@ void PWM_setup(void){
 	uint16_t minmum_duty = 450; //18% of 2500
 	
 	//initalization
-	MOT12_Init(period,duty);
+	MOT12_Init(period,minimum_duty);
 	MOT12_Dir_Set_Forward();
 }
